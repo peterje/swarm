@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    image: ghcr.io/peterje/swarm:latest
+    ports:
+      - "3000:3000"
+    deploy:
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
