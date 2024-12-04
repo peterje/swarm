@@ -1,13 +1,39 @@
 version: '3.8'
-
 services:
   web:
     build: .
     image: ghcr.io/peterje/swarm:latest
-    ports:
-      - "3000:3000"
+    networks:
+      - app-network
     deploy:
       update_config:
         parallelism: 1
         delay: 10s
         order: start-first
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    configs:
+      - source: caddy_config
+        target: /etc/caddy/Caddyfile
+    networks:
+      - app-network
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+networks:
+  app-network:
+    driver: overlay
+volumes:
+  caddy_data:
+  caddy_config:
+
+configs:
+  caddy_config:
+    file: ./Caddyfile
