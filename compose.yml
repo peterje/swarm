@@ -39,4 +39,5 @@ volumes:
 
 configs:
   caddy_config:
+    name: Caddyfile-${GIT_COMMIT_HASH:-latest}
     file: ./Caddyfile

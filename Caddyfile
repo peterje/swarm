@@ -1,3 +1,7 @@
-peteredm.com
+peteredm.com {
+ respond "Hello, privacy!"
+}
+swarm.peteredm.com {
+ reverse_proxy web:3000
+}
 
-respond "Hello, privacy!"
