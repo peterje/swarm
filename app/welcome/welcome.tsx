@@ -20,7 +20,7 @@ export function Welcome() {
           </div>
         </header>
         <div className="max-w-[300px] w-full space-y-6 px-4">
-          Live
+          Live 2
         </div>
       </div>
     </main>
