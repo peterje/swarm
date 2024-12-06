@@ -45,3 +45,28 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Add host key
+        run: |
+          mkdir -p $HOME/.ssh
+          ssh-keyscan -H $SSH_HOST >> $HOME/.ssh/known_hosts
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+
+      - name: Install Docker Context dependencies
+        run: |
+          mkdir -p $HOME/.docker
+          echo "$SSH_KEY" > $HOME/.docker/ssh_key
+          chmod 600 $HOME/.docker/ssh_key
+
+      - name: Create Docker Context
+        run: |
+          docker context create swarm-remote --docker "host=ssh://peter@peteredm.com,key=$HOME/.docker/ssh_key"
+          docker context use swarm-remote
+        env:
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+
+      - name: Deploy stack
+        run: docker stack deploy --prune --with-registry-auth --compose-file compose.yml swarm
