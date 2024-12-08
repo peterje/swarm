@@ -50,7 +50,7 @@ jobs:
       - name: Deploy stack
         uses: cssnr/stack-deploy-action@v1
         with:
-          name: ${{ steps.vars.outputs.STACK_NAME }}
+          name: swarm
           file: compose.yml
           host: peteredm.com
           user: peter
