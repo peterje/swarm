@@ -47,6 +47,11 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+      - name: Create env file
+        run: |
+          touch .env.deploy
+          echo "GIT_SHA=${{ github.sha }}" >> .env.deploy
+
       - name: Deploy stack
         uses: cssnr/stack-deploy-action@v1
         with:
@@ -55,3 +60,4 @@ jobs:
           host: peteredm.com
           user: peter
           ssh_key: ${{ secrets.SSH_KEY }}
+          env_file: .env.deploy
