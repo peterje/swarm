@@ -1,8 +1,10 @@
 name: Build and Publish Docker Image
-
 on:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
 permissions:
   contents: read
   packages: write
@@ -20,12 +22,25 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Generate deploy vars
+        id: vars
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "PROXY_AS=swarm-$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+            echo "STACK_NAME=preview-$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+          else
+            echo "PROXY_AS=swarm" >> $GITHUB_OUTPUT
+            echo "STACK_NAME=swarm" >> $GITHUB_OUTPUT
+          fi
+
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Extract metadata for Docker
         id: meta
         uses: docker/metadata-action@v5
@@ -34,6 +49,7 @@ jobs:
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,format=long
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
@@ -41,11 +57,22 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Create env file
+        run: |
+          cat > deploy.env << EOF
+          REGISTRY=${{ env.REGISTRY }}
+          IMAGE_NAME=${{ env.IMAGE_NAME }}
+          GITHUB_SHA=${{ github.sha }}
+          PROXY_AS=${{ steps.vars.outputs.PROXY_AS }}
+          EOF
+
       - name: Deploy stack
         uses: cssnr/stack-deploy-action@v1
         with:
-          name: swarm
+          name: ${{ steps.vars.outputs.STACK_NAME }}
           file: compose.yml
           host: peteredm.com
           user: peter
           ssh_key: ${{ secrets.SSH_KEY }}
+          env_file: deploy.env

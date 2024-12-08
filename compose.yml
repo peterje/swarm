@@ -23,8 +23,8 @@ services:
     build: .
     image: ghcr.io/peterje/swarm:latest
     labels:
-      caddy: swarm.peteredm.com
-      caddy.reverse_proxy: web:3000
+      - "caddy=${PREVIEW_NAME}.peteredm.com"
+      - "caddy.reverse_proxy=web:3000"
     ports:
       - "3000:3000"
     networks:
