@@ -50,7 +50,7 @@ jobs:
       - name: Create env file
         run: |
           touch .env.deploy
-          echo "GIT_SHA=${{ github.sha }}" >> .env.deploy
+          echo "CADDY_PROXY_URL=preview-${GITHUB_SHA: -8}.peteredm.com" >> .env.deploy
 
       - name: Deploy stack
         uses: cssnr/stack-deploy-action@v1
