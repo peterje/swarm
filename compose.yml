@@ -3,8 +3,8 @@ services:
   caddy:
     image: lucaslorentz/caddy-docker-proxy:ci-alpine
     labels:
-      caddy: "${CADDY_PROXY_URL}"
-      caddy.respond: / "Hello, Caddy 1" 200
+      caddy: peteredm.com
+      caddy.respond: / "Hello, Caddy" 200
     ports:
       - 80:80
       - 443:443
@@ -18,6 +18,22 @@ services:
     deploy:
       restart_policy:
         condition: any
+
+  web:
+    build: .
+    image: ${REGISTRY}/${IMAGE_NAME}:${GITHUB_SHA:-latest}
+    labels:
+      - "caddy=${PROXY_AS}.peteredm.com"
+      - "caddy.reverse_proxy=web:3000"
+    ports:
+      - "3000:3000"
+    networks:
+      - caddy  # Changed to use the same network as Caddy
+    deploy:
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
 
 networks:
   caddy:
