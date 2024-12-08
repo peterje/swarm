@@ -23,17 +23,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Generate deploy vars
-        id: vars
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "PROXY_AS=swarm-$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
-            echo "STACK_NAME=preview-$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
-          else
-            echo "PROXY_AS=swarm" >> $GITHUB_OUTPUT
-            echo "STACK_NAME=swarm" >> $GITHUB_OUTPUT
-          fi
-
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
@@ -57,15 +46,6 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-
-      - name: Create env file
-        run: |
-          cat > deploy.env << EOF
-          REGISTRY=${{ env.REGISTRY }}
-          IMAGE_NAME=${{ env.IMAGE_NAME }}
-          GITHUB_SHA=sha-${{ github.sha }}
-          PROXY_AS=${{ steps.vars.outputs.PROXY_AS }}
-          EOF
 
       - name: Deploy stack
         uses: cssnr/stack-deploy-action@v1
