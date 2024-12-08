@@ -55,4 +55,3 @@ jobs:
           host: peteredm.com
           user: peter
           ssh_key: ${{ secrets.SSH_KEY }}
-          env_file: deploy.env
