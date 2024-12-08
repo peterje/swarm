@@ -23,15 +23,19 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      
+
       - name: Get branch name
         id: branch-name
         run: |
-          # For pull requests, use the head branch name
           if [ "${{ github.event_name }}" == "pull_request" ]; then
-            echo "branch=${GITHUB_HEAD_REF}" >> $GITHUB_OUTPUT
+            # Replace invalid characters with hyphens and convert to lowercase
+            BRANCH=$(echo "${GITHUB_HEAD_REF}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')
+            echo "branch=${BRANCH}" >> $GITHUB_OUTPUT
+            echo "original_branch=${GITHUB_HEAD_REF}" >> $GITHUB_OUTPUT
           else
-            echo "branch=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
+            BRANCH=$(echo "${GITHUB_REF#refs/heads/}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')
+            echo "branch=${BRANCH}" >> $GITHUB_OUTPUT
+            echo "original_branch=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
           fi
           
       - name: Log in to GHCR
@@ -63,7 +67,8 @@ jobs:
         run: |
           touch .env.deploy
           echo "CADDY_PROXY_URL=preview-${{ steps.branch-name.outputs.branch }}.peteredm.com" >> .env.deploy
-          
+
+
       - name: Deploy stack
         uses: cssnr/stack-deploy-action@v1
         with:
@@ -79,7 +84,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const url = `https://preview-${context.payload.pull_request.head.ref}.peteredm.com`;
+            const url = `https://preview-${context.payload.pull_request.head.ref.toLowerCase().replace(/[^a-z0-9-]/g, '-')}.peteredm.com`;
             const comment = `🚀 Preview deployment is ready!\n\n[View Preview](${url})`;
             
             // Get existing comments
@@ -95,7 +100,6 @@ jobs:
             });
             
             if (botComment) {
-              // Update existing comment
               await github.rest.issues.updateComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -103,7 +107,6 @@ jobs:
                 body: comment
               });
             } else {
-              // Create new comment
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
