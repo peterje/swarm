@@ -61,7 +61,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
 
         # https://maxschmitt.me/posts/github-actions-ssh-key
-      - name: Add SSH key
+      - name: Deploy
         env:
             SSH_AUTH_SOCK: /tmp/ssh_agent.sock
         run: |
@@ -71,17 +71,11 @@ jobs:
             chmod 600 /home/runner/.ssh/github_actions
             ssh-agent -a $SSH_AUTH_SOCK > /dev/null	
             ssh-add /home/runner/.ssh/github_actions
-
-      - name: Create Docker context
-        run: |
-          docker context create remote --docker "host=ssh://peter@peteredm.com"
-          docker context use remote
-          
-      - name: Deploy stack
-        run: |
-          GIT_SHA=sha-${{ github.sha }} \
-          DOMAINS=preview-${{ steps.branch-name.outputs.branch }}.peteredm.com \
-          docker stack deploy --compose-file app.stack.yml app-${{ steps.branch-name.outputs.branch }} --with-registry-auth
+            docker context create remote --docker "host=ssh://peter@peteredm.com"
+            docker context use remote
+            GIT_SHA=sha-${{ github.sha }} \
+            DOMAINS=preview-${{ steps.branch-name.outputs.branch }}.peteredm.com \
+            docker stack deploy --compose-file app.stack.yml app-${{ steps.branch-name.outputs.branch }} --with-registry-auth
 
       - name: Comment on PR
         if: github.event_name == 'pull_request'
