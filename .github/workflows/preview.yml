@@ -1,9 +1,9 @@
 name: build and deploy preview
 on:
-  push:
+  pull_request:
     branches:
-      - '**'
-      - '!main'  # exclude main branch if you don't want to deploy it
+      - main
+
 permissions:
   contents: read
   packages: write
