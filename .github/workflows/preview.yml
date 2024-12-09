@@ -3,7 +3,6 @@ on:
   pull_request:
     branches:
       - main
-
 permissions:
   contents: read
   packages: write
@@ -64,7 +63,12 @@ jobs:
       - name: Create env file
         run: |
           touch .env.deploy
-          echo "DOMAINS=preview-${{ steps.branch-name.outputs.branch }}.peteredm.com" >> .env.deploy
+          echo "DOMAINS=preview-${BRANCH}.peteredm.com" >> .env.deploy
+          echo "GITHUB_SHA=sha-${SHA}" >> .env.deploy
+        env:
+          BRANCH: ${{ steps.branch-name.outputs.branch }}
+          SHA: ${{ github.sha }}
+
 
       - name: Deploy stack
         uses: cssnr/stack-deploy-action@v1
