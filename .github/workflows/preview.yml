@@ -1,4 +1,4 @@
-name: build and deploy preview
+name: Build and Deploy Preview
 on:
   pull_request:
     branches:
@@ -60,25 +60,28 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
-      - name: Create env file
-        run: |
-          touch .env.deploy
-          echo "DOMAINS=preview-${BRANCH}.peteredm.com" >> .env.deploy
-          echo "GITHUB_SHA=sha-${SHA}" >> .env.deploy
+        # https://maxschmitt.me/posts/github-actions-ssh-key
+      - name: Add SSH key
         env:
-          BRANCH: ${{ steps.branch-name.outputs.branch }}
-          SHA: ${{ github.sha }}
+            SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+        run: |
+            mkdir -p /home/runner/.ssh
+            ssh-keyscan peteredm.com >> /home/runner/.ssh/known_hosts
+            echo "${{ secrets.SSH_KEY }}" > /home/runner/.ssh/github_actions
+            chmod 600 /home/runner/.ssh/github_actions
+            ssh-agent -a $SSH_AUTH_SOCK > /dev/null	
+            ssh-add /home/runner/.ssh/github_actions
 
-
+      - name: Create Docker context
+        run: |
+          docker context create remote --docker "host=ssh://peter@peteredm.com"
+          docker context use remote
+          
       - name: Deploy stack
-        uses: cssnr/stack-deploy-action@v1
-        with:
-          name: app-${{ steps.branch-name.outputs.branch }}
-          file: app.stack.yml
-          host: peteredm.com
-          user: peter
-          ssh_key: ${{ secrets.SSH_KEY }}
-          env_file: .env.deploy
+        run: |
+          GIT_SHA=sha-${{ github.sha }} \
+          DOMAINS=preview-${{ steps.branch-name.outputs.branch }}.peteredm.com \
+          docker stack deploy --compose-file app.stack.yml app-${{ steps.branch-name.outputs.branch }} --with-registry-auth
 
       - name: Comment on PR
         if: github.event_name == 'pull_request'

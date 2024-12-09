@@ -1,11 +1,12 @@
+# app.stack.yml
 version: '3.8'
 services:
   web:
     build: .
-    image: ${REGISTRY}/${IMAGE_NAME}:${GITHUB_SHA:-latest}
+    image: ghcr.io/peterje/swarm:${GIT_SHA}
     labels:
-      - "caddy=${DOMAINS}"
-      - "caddy.reverse_proxy={{upstreams}}"
+      caddy: "${DOMAINS}"
+      caddy.reverse_proxy: web:3000
     ports:
       - "3000:3000"
     networks:
