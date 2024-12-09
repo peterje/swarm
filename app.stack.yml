@@ -4,8 +4,8 @@ services:
     build: .
     image: ${REGISTRY}/${IMAGE_NAME}:${GITHUB_SHA:-latest}
     labels:
-      - caddy: "${DOMAINS}"
-      - caddy.reverse_proxy: "{{ upstreams }}"
+      - "caddy=${DOMAINS}"
+      - "caddy.reverse_proxy={{upstreams}}"
     ports:
       - "3000:3000"
     networks:
