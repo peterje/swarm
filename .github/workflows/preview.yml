@@ -1,11 +1,8 @@
 name: Build and Deploy Preview
 on:
   pull_request:
-    branches: [ main ]
-  push:
     branches:
-      - '**'
-      - '!main'  # Exclude main branch if you don't want to deploy it
+      - main
 permissions:
   contents: read
   packages: write
@@ -23,15 +20,19 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      
+
       - name: Get branch name
         id: branch-name
         run: |
-          # For pull requests, use the head branch name
           if [ "${{ github.event_name }}" == "pull_request" ]; then
-            echo "branch=${GITHUB_HEAD_REF}" >> $GITHUB_OUTPUT
+            # Replace invalid characters with hyphens and convert to lowercase
+            BRANCH=$(echo "${GITHUB_HEAD_REF}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')
+            echo "branch=${BRANCH}" >> $GITHUB_OUTPUT
+            echo "original_branch=${GITHUB_HEAD_REF}" >> $GITHUB_OUTPUT
           else
-            echo "branch=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
+            BRANCH=$(echo "${GITHUB_REF#refs/heads/}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')
+            echo "branch=${BRANCH}" >> $GITHUB_OUTPUT
+            echo "original_branch=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
           fi
           
       - name: Log in to GHCR
@@ -58,28 +59,30 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          
-      - name: Create env file
+
+        # https://maxschmitt.me/posts/github-actions-ssh-key
+      - name: Deploy
+        env:
+            SSH_AUTH_SOCK: /tmp/ssh_agent.sock
         run: |
-          touch .env.deploy
-          echo "CADDY_PROXY_URL=preview-${{ steps.branch-name.outputs.branch }}.peteredm.com" >> .env.deploy
-          
-      - name: Deploy stack
-        uses: cssnr/stack-deploy-action@v1
-        with:
-          name: swarm-${{ steps.branch-name.outputs.branch }}
-          file: compose.yml
-          host: peteredm.com
-          user: peter
-          ssh_key: ${{ secrets.SSH_KEY }}
-          env_file: .env.deploy
+            mkdir -p /home/runner/.ssh
+            ssh-keyscan peteredm.com >> /home/runner/.ssh/known_hosts
+            echo "${{ secrets.SSH_KEY }}" > /home/runner/.ssh/github_actions
+            chmod 600 /home/runner/.ssh/github_actions
+            ssh-agent -a $SSH_AUTH_SOCK > /dev/null	
+            ssh-add /home/runner/.ssh/github_actions
+            docker context create remote --docker "host=ssh://peter@peteredm.com"
+            docker context use remote
+            GIT_SHA=sha-${{ github.sha }} \
+            DOMAINS=preview-${{ steps.branch-name.outputs.branch }}.peteredm.com \
+            docker stack deploy --compose-file app.stack.yml app-${{ steps.branch-name.outputs.branch }} --with-registry-auth
 
       - name: Comment on PR
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
-            const url = `https://preview-${context.payload.pull_request.head.ref}.peteredm.com`;
+            const url = `https://preview-${context.payload.pull_request.head.ref.toLowerCase().replace(/[^a-z0-9-]/g, '-')}.peteredm.com`;
             const comment = `🚀 Preview deployment is ready!\n\n[View Preview](${url})`;
             
             // Get existing comments
@@ -95,7 +98,6 @@ jobs:
             });
             
             if (botComment) {
-              // Update existing comment
               await github.rest.issues.updateComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -103,7 +105,6 @@ jobs:
                 body: comment
               });
             } else {
-              // Create new comment
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,

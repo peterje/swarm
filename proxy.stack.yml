@@ -1,0 +1,27 @@
+# proxy.stack.yml
+version: '3.8'
+services:
+  caddy:
+    image: lucaslorentz/caddy-docker-proxy:ci-alpine
+    ports:
+      - 80:80
+      - 443:443
+      - 443:443/udp
+    environment:
+      - CADDY_INGRESS_NETWORKS=caddy
+    networks:
+      - caddy
+    labels:
+      caddy: swarm.peteredm.com
+      caddy.respond: / "Hello World" 200
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - caddy_data:/data
+    deploy:
+      restart_policy:
+        condition: any
+networks:
+  caddy:
+    external: true
+volumes:
+  caddy_data: {}

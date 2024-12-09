@@ -1,0 +1,21 @@
+# app.stack.yml
+version: '3.8'
+services:
+  web:
+    build: .
+    image: ghcr.io/peterje/swarm:${GIT_SHA}
+    labels:
+      caddy: "${DOMAINS}"
+      caddy.reverse_proxy: web:3000
+    ports:
+      - "3000:3000"
+    networks:
+      - caddy 
+    deploy:
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+networks:
+  caddy:
+    external: true
